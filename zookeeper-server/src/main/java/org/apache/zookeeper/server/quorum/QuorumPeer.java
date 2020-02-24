@@ -1072,7 +1072,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         if (!getView().containsKey(myid)) {
             throw new RuntimeException("My id " + myid + " not in the peer list");
         }
-        loadDataBase();
+        loadDataBase();     //加载磁盘中的数据给当前节点对象，获取节点的epoch信息，并作比较
         startServerCnxnFactory();
         try {
             adminServer.start();
@@ -1080,13 +1080,17 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             LOG.warn("Problem starting AdminServer", e);
             System.out.println(e);
         }
+        // 开始选举
         startLeaderElection();
         startJvmPauseMonitor();
-        super.start();
+        super.start(); //调用本类的run()开始执行选举算法
     }
 
     private void loadDataBase() {
         try {
+            // 将节点保存的数据从磁盘加载到内存，并将其中的事务写入commitLog，返回节点的最新的zxid
+            // 相当于执行事务然后保存数据到节点，但不提交。
+            // 此处事务是指选主时节点之间的通信数据
             zkDb.loadDataBase();
 
             // load the epochs
@@ -1095,6 +1099,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             try {
                 currentEpoch = readLongFromFile(CURRENT_EPOCH_FILENAME);
             } catch (FileNotFoundException e) {
+                // 若读取文件时发生异常，则将当前epoch设为从zxid获取到的最新epoch
                 // pick a reasonable epoch number
                 // this should only happen once when moving to a
                 // new code version
@@ -1104,6 +1109,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                         + "This should only happen when you are upgrading your installation",
                     CURRENT_EPOCH_FILENAME,
                     currentEpoch);
+                // 然后写入最新的epoch到文件中
                 writeLongToFile(CURRENT_EPOCH_FILENAME, currentEpoch);
             }
             if (epochOfZxid > currentEpoch) {
@@ -1144,9 +1150,14 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         responder.running = false;
         responder.interrupt();
     }
+    // 开始选举
     public synchronized void startLeaderElection() {
         try {
             if (getPeerState() == ServerState.LOOKING) {
+                // 所有节点在初始化完成后的时刻都是LOOKING状态
+                // 然后都给自己投票
+                // 这里的lastLoggedZxid()、getCurrentEpoch()获取的数据
+                // 都是之前的loadDatabase()得到的
                 currentVote = new Vote(myid, getLastLoggedZxid(), getCurrentEpoch());
             }
         } catch (IOException e) {
@@ -1155,6 +1166,9 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             throw re;
         }
 
+        // 创建选举算法
+        // electionType可以从配置文件中读取到
+        // 每一种electionType对应了一个选举算法
         this.electionAlg = createElectionAlgorithm(electionType);
     }
 
@@ -1275,15 +1289,24 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         case 2:
             throw new UnsupportedOperationException("Election Algorithm 2 is not supported.");
         case 3:
+            // 真正的选举算法过程
+            // 默认的选举算法
+            // 参选节点之间的连接管理器
+            // 它可以保证集群中的每一对参选节点都只有一条TCP连接用于通信
+            // 具体信息查看类注释
             QuorumCnxManager qcm = createCnxnManager();
+            // qcmRef是QuorumCnxManager对象的原子引用
+            // 保证该对象的修改对共享它的线程可见，同时保证修改的原子性.
             QuorumCnxManager oldQcm = qcmRef.getAndSet(qcm);
             if (oldQcm != null) {
                 LOG.warn("Clobbering already-set QuorumCnxManager (restarting leader election?)");
                 oldQcm.halt();
             }
+            // 创建一个监听器
             QuorumCnxManager.Listener listener = qcm.listener;
             if (listener != null) {
                 listener.start();
+                // 利用参选节点连接管理器创建一个选举过程
                 FastLeaderElection fle = new FastLeaderElection(this, qcm);
                 fle.start();
                 le = fle;
@@ -1328,6 +1351,10 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
 
     boolean shuttingDownLE = false;
 
+    /**
+     * 该方法真正 执行选举的算法
+     * 一百多行
+     */
     @Override
     public void run() {
         updateThreadName();
@@ -2089,7 +2116,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         return qcmRef.get();
     }
     private long readLongFromFile(String name) throws IOException {
-        File file = new File(logFactory.getSnapDir(), name);
+            File file = new File(logFactory.getSnapDir(), name);
         BufferedReader br = new BufferedReader(new FileReader(file));
         String line = "";
         try {
