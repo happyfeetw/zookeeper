@@ -768,8 +768,8 @@ public class FastLeaderElection implements Election {
          * zxids for a server depending on timing.
          */
         for (Map.Entry<Long, Vote> entry : votes.entrySet()) {
-            if (vote.equals(entry.getValue())) {
-                voteSet.addAck(entry.getKey());
+            if (vote.equals(entry.getValue())) { // 如果vote(新投票)跟recvSet(收到的投票集)中的投票结果一致
+                voteSet.addAck(entry.getKey()); // 认为新票数投给了当前leader，即向收到的投票集中添加1个确认信息(当前节点的sid)
             }
         }
 
