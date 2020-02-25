@@ -940,6 +940,7 @@ public class FastLeaderElection implements Election {
              * 此对象不存储LOOKING状态的通知，只保存FOLLOWING或LEADING状态的通知消息。
              * 在当前参选节点新加入一个集群后(logicalclock的值大于收到的消息中所包含的electionEpoch的值)，
              * 可以通过该对象获知集群中的leader节点信息
+             * 该map用于新加入集群中节点判断谁是leader节点
              */
             Map<Long, Vote> outofelection = new HashMap<Long, Vote>();
 
@@ -992,7 +993,7 @@ public class FastLeaderElection implements Election {
                     int tmpTimeOut = notTimeout * 2;
                     notTimeout = Math.min(tmpTimeOut, maxNotificationInterval);
                     LOG.info("Notification time out: {}", notTimeout);
-                } else if (validVoter(n.sid) && validVoter(n.leader)) {
+                } else if (validVoter(n.sid) && validVoter(n.leader)) { // 判断当前节点和收到的消息通知中的leader节点是否存在与当前的集群中
                     /*
                      * Only proceed if the vote comes from a replica in the current or next
                      * voting view for a replica in the current or next voting view.
@@ -1085,14 +1086,15 @@ public class FastLeaderElection implements Election {
                             if (voteSet.hasAllQuorums() && checkLeader(recvset, n.leader, n.electionEpoch)) { // 检查leader节点的可用性
                                 setPeerState(n.leader, voteSet);
                                 Vote endVote = new Vote(n.leader, n.zxid, n.electionEpoch, n.peerEpoch);
-                                leaveInstance(endVote);
+                                leaveInstance(endVote); // 结束选举过程并更新各个节点的状态和信息
                                 return endVote;
                             }
                         }
 
                         /*
-                         * Before joining an established ensemble, verify that
+                         * Before joining an established ensemble(剧团、合唱团), verify that
                          * a majority are following the same leader.
+                         * 在加入一个集群前，首先确认该集群中leader节点有超过半数的followers
                          *
                          * Note that the outofelection map also stores votes from the current leader election.
                          * See ZOOKEEPER-1732 for more information.
@@ -1101,11 +1103,13 @@ public class FastLeaderElection implements Election {
                         voteSet = getVoteTracker(outofelection, new Vote(n.version, n.leader, n.zxid, n.electionEpoch, n.peerEpoch, n.state));
 
                         if (voteSet.hasAllQuorums() && checkLeader(outofelection, n.leader, n.electionEpoch)) {
+                            // 设置新节点自身的相关信息
                             synchronized (this) {
                                 logicalclock.set(n.electionEpoch);
                                 setPeerState(n.leader, voteSet);
                             }
                             Vote endVote = new Vote(n.leader, n.zxid, n.electionEpoch, n.peerEpoch);
+                            // 更新自己的信息并结束投票
                             leaveInstance(endVote);
                             return endVote;
                         }
@@ -1114,7 +1118,7 @@ public class FastLeaderElection implements Election {
                         LOG.warn("Notification state unrecoginized: {} (n.state), {}(n.sid)", n.state, n.sid);
                         break;
                     }
-                } else {
+                } else {    // 非集群的情况
                     if (!validVoter(n.leader)) {
                         LOG.warn("Ignoring notification for non-cluster member sid {} from sid {}", n.leader, n.sid);
                     }
@@ -1140,6 +1144,7 @@ public class FastLeaderElection implements Election {
     /**
      * Check if a given sid is represented in either the current or
      * the next voting view
+     * 判断sid所代表的节点是否存在于当前选举的集群中
      *
      * @param sid     Server identifier
      * @return boolean
