@@ -43,4 +43,9 @@ recent release at u211 or above.
 # Contributing
 We always welcome new contributors to the project! See [How to Contribute](https://cwiki.apache.org/confluence/display/ZOOKEEPER/HowToContribute) for details on how to submit patch through pull request and our contribution workflow.
 
+# 本仓库
+自己阅读源码的笔记，懒得重新开文档，就直接在源码上加注释了。
+自用为主，欢迎友好交流:)
+公众号转载请注明出处（if there is one :)
+
 
