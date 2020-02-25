@@ -198,7 +198,9 @@ public class FastLeaderElection implements Election {
 
     }
 
+    // 发送消息的阻塞队列
     LinkedBlockingQueue<ToSend> sendqueue;
+    // 收取消息的阻塞队列
     LinkedBlockingQueue<Notification> recvqueue;
 
     /**
@@ -893,6 +895,7 @@ public class FastLeaderElection implements Election {
      * Starts a new round of leader election. Whenever our QuorumPeer
      * changes its state to LOOKING, this method is invoked, and it
      * sends notifications to all other peers.
+     * 选举的核心逻辑
      */
     public Vote lookForLeader() throws InterruptedException {
         try {
@@ -909,6 +912,7 @@ public class FastLeaderElection implements Election {
              * The votes from the current leader election are stored in recvset. In other words, a vote v is in recvset
              * if v.electionEpoch == logicalclock. The current participant uses recvset to deduce on whether a majority
              * of participants has voted for it.
+             * 当前参选节点会根据 recvset 中的选票推断集群中是否已经有超过半数的节点投票给自己
              */
             Map<Long, Vote> recvset = new HashMap<Long, Vote>();
 
@@ -918,13 +922,17 @@ public class FastLeaderElection implements Election {
              * Only FOLLOWING or LEADING notifications are stored in outofelection. The current participant could use
              * outofelection to learn which participant is the leader if it arrives late (i.e., higher logicalclock than
              * the electionEpoch of the received notifications) in a leader election.
+             * outofelection保存了上一轮选举和当前选举的选票，即选举结果
+             * 此对象不存储LOOKING状态的通知，只保存FOLLOWING或LEADING状态的通知消息。
+             * 在当前参选节点新加入一个集群后(logicalclock的值大于收到的消息中所包含的electionEpoch的值)，
+             * 可以通过该对象获知集群中的leader节点信息
              */
             Map<Long, Vote> outofelection = new HashMap<Long, Vote>();
 
             int notTimeout = minNotificationInterval;
 
             synchronized (this) {
-                logicalclock.incrementAndGet();
+                logicalclock.incrementAndGet(); // 逻辑时钟计数+1
                 updateProposal(getInitId(), getInitLastLoggedZxid(), getPeerEpoch());
             }
 
@@ -939,11 +947,13 @@ public class FastLeaderElection implements Election {
             /*
              * Loop in which we exchange notifications until we find a leader
              */
-
+            // 与集群中的节点互相发送消息，直到选举出一个新的leader节点
             while ((self.getPeerState() == ServerState.LOOKING) && (!stop)) {
                 /*
                  * Remove next notification from queue, times out after 2 times
                  * the termination time
+                 * linkedBlockingQueue-FIFO
+                 * 从收件箱里取出下一个消息(收到的投票消息)
                  */
                 Notification n = recvqueue.poll(notTimeout, TimeUnit.MILLISECONDS);
 
@@ -952,14 +962,18 @@ public class FastLeaderElection implements Election {
                  * Otherwise processes new notification.
                  */
                 if (n == null) {
+                    // 判断是否已经投递过消息
                     if (manager.haveDelivered()) {
+                        // 已投递但未收到任何投票(n == null)，则继续向其他节点发送消息请求对方投票
                         sendNotifications();
                     } else {
+                        // 未投递，则连接已知的其他节点
                         manager.connectAll();
                     }
 
                     /*
                      * Exponential backoff
+                     * 指数级地延长超时时间
                      */
                     int tmpTimeOut = notTimeout * 2;
                     notTimeout = Math.min(tmpTimeOut, maxNotificationInterval);
@@ -981,8 +995,10 @@ public class FastLeaderElection implements Election {
                         }
                         // If notification > current, replace and send messages out
                         if (n.electionEpoch > logicalclock.get()) {
+                            // 如果收到的消息中epoch比本地logicalclock的值大，说明本地信息陈旧。
+                            // 随后将本地logicalclock设置为最新的。
                             logicalclock.set(n.electionEpoch);
-                            recvset.clear();
+                            recvset.clear(); // 清除收件箱
                             if (totalOrderPredicate(n.leader, n.zxid, n.peerEpoch, getInitId(), getInitLastLoggedZxid(), getPeerEpoch())) {
                                 updateProposal(n.leader, n.zxid, n.peerEpoch);
                             } else {
