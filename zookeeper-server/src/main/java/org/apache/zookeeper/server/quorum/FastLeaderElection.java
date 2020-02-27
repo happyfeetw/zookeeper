@@ -45,6 +45,9 @@ import org.slf4j.LoggerFactory;
  * There are a few parameters that can be tuned to change its behavior. First,
  * finalizeWait determines the amount of time to wait until deciding upon a leader.
  * This is part of the leader election algorithm.
+ *
+ * 在节点启动后的第一次选举中，各个服务节点在epoch、zxid都相同的情况下，是基于各个服务器的myid来选leader的
+ * myid最大的作为leader
  */
 
 public class FastLeaderElection implements Election {
@@ -948,14 +951,14 @@ public class FastLeaderElection implements Election {
 
             synchronized (this) {
                 logicalclock.incrementAndGet(); // 逻辑时钟计数+1
-                updateProposal(getInitId(), getInitLastLoggedZxid(), getPeerEpoch());
+                updateProposal(getInitId(), getInitLastLoggedZxid(), getPeerEpoch());   //组织自己的选举提案，给自己投票
             }
 
             LOG.info(
                 "New election. My id = {}, proposed zxid=0x{}",
                 self.getId(),
                 Long.toHexString(proposedZxid));
-            sendNotifications();
+            sendNotifications();    // 向其他节点发送自己自己投票消息
 
             SyncedLearnerTracker voteSet;
 

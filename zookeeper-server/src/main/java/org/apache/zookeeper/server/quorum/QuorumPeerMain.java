@@ -152,6 +152,7 @@ public class QuorumPeerMain {
         }
 
         LOG.info("Starting quorum peer");
+        // 生命一个服务器指标提供者
         MetricsProvider metricsProvider;
         try {
             metricsProvider = MetricsProviderBootstrap.startMetricsProvider(
@@ -229,6 +230,7 @@ public class QuorumPeerMain {
                 quorumPeer.setJvmPauseMonitor(new JvmPauseMonitor(config));
             }
 
+            // 选举方法入口
             quorumPeer.start();
             ZKAuditProvider.addZKStartStopAuditLog();
             quorumPeer.join();
