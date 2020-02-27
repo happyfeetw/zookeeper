@@ -114,6 +114,10 @@ public class ClientCnxn {
      * controls the size of each call. It is set to 128kB to be conservative
      * with respect to the server's 1MB default for jute.maxBuffer.
      */
+    // 为了避免单个session中设置过多watch导致重连时watch无法重新建立的问题
+    // 该问题产生的原因是设置watch的请求数量超过了服务端配置的最大缓冲区的值(该值默认是1mb)
+    // 为了解决上述问题，zookeeper将watch在重连时的重建过程分散到多个设置watch的调用中去
+    // 并引入了此常量，用于控制每个调用的大小(128kb)，以避免超过服务端的缓冲区默认值
     private static final int SET_WATCHES_MAX_LENGTH = 128 * 1024;
 
     /* predefined xid's values recognized as special by the server */
@@ -148,6 +152,8 @@ public class ClientCnxn {
 
     /**
      * These are the packets that need to be sent.
+     * 发送数据包的队列
+     * 基于链表的双端队列
      */
     private final LinkedBlockingDeque<Packet> outgoingQueue = new LinkedBlockingDeque<Packet>();
 
@@ -1660,6 +1666,9 @@ public class ClientCnxn {
         // 1. synchronize with the final cleanup() in SendThread.run() to avoid race
         // 2. synchronized against each packet. So if a closeSession packet is added,
         // later packet will be notified.
+        // 此处使用同步代码块有两个目的
+        // 1. 避免与发送线程中的cleanup()方法产生线程竞速导致一系列问题
+        // 2. 将每个数据包都同步起来，这样可以保证如果添加了一个关闭session的数据包，后面的其他数据包可以得知这个消息
         synchronized (state) {
             if (!state.isAlive() || closing) {
                 conLossPacket(packet);
@@ -1669,9 +1678,13 @@ public class ClientCnxn {
                 if (h.getType() == OpCode.closeSession) {
                     closing = true;
                 }
+                // 向发送队列添加数据包
                 outgoingQueue.add(packet);
             }
         }
+        // 告诉连接的socket，有一个数据包添加进来了
+        // 底层socket走nio建立，netty方式为空方法。
+        // 因为添加数据包的时候已经唤醒了一个netty连接。
         sendThread.getClientCnxnSocket().packetAdded();
         return packet;
     }
