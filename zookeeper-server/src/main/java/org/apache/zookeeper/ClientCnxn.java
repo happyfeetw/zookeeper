@@ -446,12 +446,17 @@ public class ClientCnxn {
         readTimeout = sessionTimeout * 2 / 3;
         readOnly = canBeReadOnly;
 
+        // 利用客户端socket创建发送线程
         sendThread = new SendThread(clientCnxnSocket);
+        // 创建事件线程
         eventThread = new EventThread();
         this.clientConfig = zooKeeper.getClientConfig();
         initRequestTimeout();
     }
 
+    /**
+     * 启动构造函数中创建的两个线程
+     */
     public void start() {
         sendThread.start();
         eventThread.start();
@@ -859,6 +864,7 @@ public class ClientCnxn {
     /**
      * This class services the outgoing request queue and generates the heart
      * beats. It also spawns the ReadThread.
+     * 将数据包加入outgoing队列中后，对于队列的操作，在此类中
      */
     class SendThread extends ZooKeeperThread {
 
@@ -1682,6 +1688,7 @@ public class ClientCnxn {
                 outgoingQueue.add(packet);
             }
         }
+        // 触发selector的执行
         // 告诉连接的socket，有一个数据包添加进来了
         // 底层socket走nio建立，netty方式为空方法。
         // 因为添加数据包的时候已经唤醒了一个netty连接。

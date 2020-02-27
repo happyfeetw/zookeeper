@@ -2241,6 +2241,7 @@ public class ZooKeeper implements AutoCloseable {
         SetDataResponse response = new SetDataResponse();   // 设置值之后的响应对象
         // 提交请求后获得的响应头对象
         // 这里submitRequest方法就是客户端连接zookeeper的入口
+        // 后续代码从zookeeper的构造方法入手
         ReplyHeader r = cnxn.submitRequest(h, request, response, wcb);
         if (r.getErr() != 0) {
             if (r.getErr() == KeeperException.Code.NONODE.intValue()) {
