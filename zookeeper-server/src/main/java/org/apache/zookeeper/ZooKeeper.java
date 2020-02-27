@@ -2232,12 +2232,15 @@ public class ZooKeeper implements AutoCloseable {
 
         final String serverPath = prependChroot(clientPath);
 
-        RequestHeader h = new RequestHeader();
+        // 构建请求头对象、存在请求对象和一个响应头对象
+        RequestHeader h = new RequestHeader();  // 请求头对象
         h.setType(ZooDefs.OpCode.exists);
-        ExistsRequest request = new ExistsRequest();
+        ExistsRequest request = new ExistsRequest();    // 存在的请求对象
         request.setPath(serverPath);
         request.setWatch(watcher != null);
-        SetDataResponse response = new SetDataResponse();
+        SetDataResponse response = new SetDataResponse();   // 设置值之后的响应对象
+        // 提交请求后获得的响应头对象
+        // 这里submitRequest方法就是客户端连接zookeeper的入口
         ReplyHeader r = cnxn.submitRequest(h, request, response, wcb);
         if (r.getErr() != 0) {
             if (r.getErr() == KeeperException.Code.NONODE.intValue()) {

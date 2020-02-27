@@ -1540,6 +1540,8 @@ public class ClientCnxn {
         WatchRegistration watchRegistration,
         WatchDeregistration watchDeregistration) throws InterruptedException {
         ReplyHeader r = new ReplyHeader();
+        // 构造数据包
+        // 数据包是zookeeper中cli与server通信的数据单元
         Packet packet = queuePacket(
             h,
             r,
@@ -1616,6 +1618,20 @@ public class ClientCnxn {
         return queuePacket(h, r, request, response, cb, clientPath, serverPath, ctx, watchRegistration, null);
     }
 
+    /**
+     * 构造数据包
+     * @param h 请求头
+     * @param r 响应头
+     * @param request 请求
+     * @param response 响应
+     * @param cb 异步回调
+     * @param clientPath
+     * @param serverPath
+     * @param ctx
+     * @param watchRegistration watch注册器
+     * @param watchDeregistration watch注销器
+     * @return
+     */
     public Packet queuePacket(
         RequestHeader h,
         ReplyHeader r,
@@ -1632,6 +1648,8 @@ public class ClientCnxn {
         // Note that we do not generate the Xid for the packet yet. It is
         // generated later at send-time, by an implementation of ClientCnxnSocket::doIO(),
         // where the packet is actually sent.
+        // 此时事务id还未生成
+        // 事务id由 ClientCnxnSocket的doIO()方法生成，并且该方法随后会发送数据包给服务端
         packet = new Packet(h, r, request, response, watchRegistration);
         packet.cb = cb;
         packet.ctx = ctx;
