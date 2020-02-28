@@ -284,6 +284,7 @@ public class ClientCnxnSocketNetty extends ClientCnxnSocket {
                 addBack(head);
                 throw new EndOfStreamException("channel for sessionid 0x" + Long.toHexString(sessionId) + " is lost");
             }
+            // 将数据包写入netty的buffer中，并发送到服务端
             if (head != null) {
                 doWrite(pendingQueue, head, cnxn);
             }
@@ -348,25 +349,30 @@ public class ClientCnxnSocketNetty extends ClientCnxnSocket {
         updateNow();
         boolean anyPacketsSent = false;
         while (true) {
-            if (p != WakeupPacket.getInstance()) {
+            if (p != WakeupPacket.getInstance()) {  // 判断数据包非空
                 if ((p.requestHeader != null)
                     && (p.requestHeader.getType() != ZooDefs.OpCode.ping)
                     && (p.requestHeader.getType() != ZooDefs.OpCode.auth)) {
+                    // 先设置事务id
                     p.requestHeader.setXid(cnxn.getXid());
                     synchronized (pendingQueue) {
+                        // 同步地向队列中添加数据包
                         pendingQueue.add(p);
                     }
                 }
+                // 发送数据包
                 sendPktOnly(p);
                 anyPacketsSent = true;
             }
             if (outgoingQueue.isEmpty()) {
                 break;
             }
+            // 当发送队列非空时，移除并返回队列的头元素
             p = outgoingQueue.remove();
         }
         // TODO: maybe we should flush in the loop above every N packets/bytes?
         // But, how do we determine the right value for N ...
+        // 最终你们还是flush了啊 mmp
         if (anyPacketsSent) {
             channel.flush();
         }

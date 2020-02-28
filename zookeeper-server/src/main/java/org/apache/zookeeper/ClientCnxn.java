@@ -320,19 +320,26 @@ public class ClientCnxn {
             this.watchRegistration = watchRegistration;
         }
 
+        /**
+         * 创建byteBuffer
+         */
         public void createBB() {
             try {
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 BinaryOutputArchive boa = BinaryOutputArchive.getArchive(baos);
                 boa.writeInt(-1, "len"); // We'll fill this in later
                 if (requestHeader != null) {
+                    // 将请求头对象序列化
                     requestHeader.serialize(boa, "header");
                 }
                 if (request instanceof ConnectRequest) {
+                    // 将连接对象序列化
+                    // 策略模式？
                     request.serialize(boa, "connect");
                     // append "am-I-allowed-to-be-readonly" flag
                     boa.writeBool(readOnly, "readOnly");
                 } else if (request != null) {
+                    // 将请求对象序列化
                     request.serialize(boa, "request");
                 }
                 baos.close();
@@ -360,7 +367,6 @@ public class ClientCnxn {
             // jute toString is horrible, remove unnecessary newlines
             return sb.toString().replaceAll("\r*\n+", " ");
         }
-
     }
 
     /**
@@ -1271,6 +1277,9 @@ public class ClientCnxn {
                         to = Math.min(to, pingRwTimeout - idlePingRwServer);
                     }
 
+                    // 真正发送数据包的方法
+                    // 有两个具体实现，NIO/NETTY
+                    // 具体走哪一个？
                     clientCnxnSocket.doTransport(to, pendingQueue, ClientCnxn.this);
                 } catch (Throwable e) {
                     if (closing) {

@@ -100,9 +100,12 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                 }
             }
         }
+        // 将outgoing队列中的数据包写入buffer
         if (sockKey.isWritable()) {
+            // 获取可发送的数据包
             Packet p = findSendablePacket(outgoingQueue, sendThread.tunnelAuthInProgress());
 
+            // 处理数据包
             if (p != null) {
                 updateLastSend();
                 // If we already started writing p, p.bb will already exist
@@ -345,6 +348,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                     sendThread.primeConnection();
                 }
             } else if ((k.readyOps() & (SelectionKey.OP_READ | SelectionKey.OP_WRITE)) != 0) {
+
                 doIO(pendingQueue, cnxn);
             }
         }
