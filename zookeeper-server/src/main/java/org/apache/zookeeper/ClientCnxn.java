@@ -322,6 +322,9 @@ public class ClientCnxn {
 
         /**
          * 创建byteBuffer
+         * 将请求对象和请求头对象中的特定参数序列化
+         * 随后放入字节数组输出流对象中
+         * 再把该输出流放入byteBuffer中
          */
         public void createBB() {
             try {
@@ -329,17 +332,17 @@ public class ClientCnxn {
                 BinaryOutputArchive boa = BinaryOutputArchive.getArchive(baos);
                 boa.writeInt(-1, "len"); // We'll fill this in later
                 if (requestHeader != null) {
-                    // 将请求头对象序列化
+                    // 将请求头参数序列化
                     requestHeader.serialize(boa, "header");
                 }
                 if (request instanceof ConnectRequest) {
-                    // 将连接对象序列化
+                    // 将连接参数序列化
                     // 策略模式？
                     request.serialize(boa, "connect");
                     // append "am-I-allowed-to-be-readonly" flag
                     boa.writeBool(readOnly, "readOnly");
                 } else if (request != null) {
-                    // 将请求对象序列化
+                    // 将请求参数序列化
                     request.serialize(boa, "request");
                 }
                 baos.close();

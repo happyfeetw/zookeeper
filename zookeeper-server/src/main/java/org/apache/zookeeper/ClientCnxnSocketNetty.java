@@ -256,6 +256,16 @@ public class ClientCnxnSocketNetty extends ClientCnxnSocket {
         outgoingQueue.add(WakeupPacket.getInstance());
     }
 
+    /**
+     * 客户端与服务端建发送数据的核心代码
+     * 通过outgoing将客户端的初始化过程与客户端向服务端建立连接并发送数据的过程联系起来
+     * @param waitTimeOut timeout in blocking wait. Unit in MilliSecond.
+     * @param pendingQueue These are the packets that have been sent and
+     *                     are waiting for a response.
+     * @param cnxn
+     * @throws IOException
+     * @throws InterruptedException
+     */
     @Override
     void doTransport(
         int waitTimeOut,
@@ -271,6 +281,9 @@ public class ClientCnxnSocketNetty extends ClientCnxnSocket {
                     return;
                 }
             } else {
+                // 此处通过outgoing队列将客户端启动过程
+                // 与客户端向服务端发送数据建立连接
+                // 这两个过程联系起来
                 head = outgoingQueue.poll(waitTimeOut, TimeUnit.MILLISECONDS);
             }
             // check if being waken up on closing.
@@ -284,8 +297,8 @@ public class ClientCnxnSocketNetty extends ClientCnxnSocket {
                 addBack(head);
                 throw new EndOfStreamException("channel for sessionid 0x" + Long.toHexString(sessionId) + " is lost");
             }
-            // 将数据包写入netty的buffer中，并发送到服务端
             if (head != null) {
+                // 将数据包写入netty的buffer中，并发送到服务端
                 doWrite(pendingQueue, head, cnxn);
             }
         } finally {
@@ -326,6 +339,12 @@ public class ClientCnxnSocketNetty extends ClientCnxnSocket {
         }
     };
 
+    /**
+     * 基于netty发送数据包
+     * @param p
+     * @param doFlush
+     * @return
+     */
     private ChannelFuture sendPkt(Packet p, boolean doFlush) {
         // Assuming the packet will be sent out successfully. Because if it fails,
         // the channel will close and clean up queues.

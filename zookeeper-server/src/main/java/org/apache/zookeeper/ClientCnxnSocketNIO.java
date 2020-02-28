@@ -63,6 +63,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
      * @throws InterruptedException
      * @throws IOException
      */
+    // 基于NIO的数据包发送
     void doIO(Queue<Packet> pendingQueue, ClientCnxn cnxn) throws InterruptedException, IOException {
         SocketChannel sock = (SocketChannel) sockKey.channel();
         if (sock == null) {
@@ -115,8 +116,10 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                         && (p.requestHeader.getType() != OpCode.auth)) {
                         p.requestHeader.setXid(cnxn.getXid());
                     }
+                    // 创建字节buffer
                     p.createBB();
                 }
+                // 将含有数据包的buffer写入socketChannel
                 sock.write(p.bb);
                 if (!p.bb.hasRemaining()) {
                     sentCount.getAndIncrement();
