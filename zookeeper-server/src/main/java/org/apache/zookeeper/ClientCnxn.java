@@ -864,7 +864,7 @@ public class ClientCnxn {
     /**
      * This class services the outgoing request queue and generates the heart
      * beats. It also spawns the ReadThread.
-     * 将数据包加入outgoing队列中后，对于队列的操作，在此类中
+     * 将数据包加入outgoing队列中后，对于队列的操作，在此类的run()中执行
      */
     class SendThread extends ZooKeeperThread {
 
