@@ -691,6 +691,9 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
 
     }
 
+    /**
+     * 构建请求处理器链
+     */
     protected void setupRequestProcessors() {
         RequestProcessor finalProcessor = new FinalRequestProcessor(this);
         RequestProcessor syncProcessor = new SyncRequestProcessor(this, finalProcessor);
@@ -1111,16 +1114,22 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
                 }
             }
         }
+        // 真正开始提交被处理的请求
         try {
-            touch(si.cnxn);
-            boolean validpacket = Request.isValid(si.type);
-            if (validpacket) {
+            touch(si.cnxn); // 判断并输出请求中的连接信息
+            boolean validpacket = Request.isValid(si.type); // 判断请求是否可用
+            if (validpacket) {  // 请求可用
                 setLocalSessionFlag(si);
+                // firstProcessor : RequestProcessor
+                // 与3.4.8版本不同。3.4.8版本中启动请求的处理过程
+                // 存在三个processor，分别是prep、sync和final三个requestProcessor
+                // 当前版本中，其余两个processor在启动后的通信过程中存在（待验证）
                 firstProcessor.processRequest(si);
                 if (si.cnxn != null) {
+                    // 对在处理链中的请求的处理次数作原子递增
                     incInProcess();
                 }
-            } else {
+            } else {    // 请求不可用
                 LOG.warn("Received packet at server of unknown type {}", si.type);
                 // Update request accounting/throttling limits
                 requestFinished(si);
