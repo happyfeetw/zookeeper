@@ -430,6 +430,8 @@ public class NettyServerCnxn extends ServerCnxn {
      * Note that this method does not call <code>message.release()</code>. The
      * caller is responsible for making sure the message is released after this
      * method returns.
+     *
+     * 接受客户端发来的字节buffer，里面包含数据包。
      * @param message the message bytes to process.
      */
     private void receiveMessage(ByteBuf message) {
@@ -439,7 +441,7 @@ public class NettyServerCnxn extends ServerCnxn {
                 if (bb != null) {
                     if (LOG.isTraceEnabled()) {
                         LOG.trace("message readable {} bb len {} {}", message.readableBytes(), bb.remaining(), bb);
-                        ByteBuffer dat = bb.duplicate();
+                        ByteBuffer dat = bb.duplicate();    // 复制一份buffer用来记录日志
                         dat.flip();
                         LOG.trace("0x{} bb {}", Long.toHexString(sessionId), ByteBufUtil.hexDump(Unpooled.wrappedBuffer(dat)));
                     }
@@ -448,6 +450,7 @@ public class NettyServerCnxn extends ServerCnxn {
                         int newLimit = bb.position() + message.readableBytes();
                         bb.limit(newLimit);
                     }
+                    // 读取客户端发来的buffer
                     message.readBytes(bb);
                     bb.limit(bb.capacity());
 

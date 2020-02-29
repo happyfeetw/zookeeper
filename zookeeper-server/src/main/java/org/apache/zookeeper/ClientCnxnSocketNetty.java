@@ -350,6 +350,7 @@ public class ClientCnxnSocketNetty extends ClientCnxnSocket {
         // the channel will close and clean up queues.
         p.createBB();
         updateLastSend();
+        // 将jdk的buffer包装成netty的buf
         final ByteBuf writeBuffer = Unpooled.wrappedBuffer(p.bb);
         final ChannelFuture result = doFlush ? channel.writeAndFlush(writeBuffer) : channel.write(writeBuffer);
         result.addListener(onSendPktDoneListener);
