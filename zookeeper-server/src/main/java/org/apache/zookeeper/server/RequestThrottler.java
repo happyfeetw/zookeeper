@@ -60,6 +60,7 @@ public class RequestThrottler extends ZooKeeperCriticalThread {
 
     private static final Logger LOG = LoggerFactory.getLogger(RequestThrottler.class);
 
+    // 阻塞队列，用于存放提交过来的请求
     private final LinkedBlockingQueue<Request> submittedRequests = new LinkedBlockingQueue<Request>();
 
     private final ZooKeeperServer zks;
@@ -136,6 +137,7 @@ public class RequestThrottler extends ZooKeeperCriticalThread {
                     break;
                 }
 
+                // 由异步线程从这个队列中取出请求
                 Request request = submittedRequests.take();
                 if (Request.requestOfDeath == request) {
                     break;
@@ -146,6 +148,7 @@ public class RequestThrottler extends ZooKeeperCriticalThread {
                 }
 
                 // Throttling is disabled when maxRequests = 0
+                // 检测空请求(请求中的连接对象为空)并丢弃
                 if (maxRequests > 0) {
                     while (!killed) {
                         if (dropStaleRequests && request.isStale()) {
@@ -168,9 +171,12 @@ public class RequestThrottler extends ZooKeeperCriticalThread {
 
                 // A dropped stale request will be null
                 if (request != null) {
+                    // 请求不为空但连接为空时
                     if (request.isStale()) {
+                        // 空连接请求计数+1
                         ServerMetrics.getMetrics().STALE_REQUESTS.add(1);
                     }
+                    // 一切正常时提交请求
                     zks.submitRequestNow(request);
                 }
             }
@@ -230,6 +236,8 @@ public class RequestThrottler extends ZooKeeperCriticalThread {
             LOG.debug("Shutdown in progress. Request cannot be processed");
             dropRequest(request);
         } else {
+            // 真正将请求入队
+            // 随后一定由一个线程去处理这个队列
             submittedRequests.add(request);
         }
     }

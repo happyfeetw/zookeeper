@@ -462,8 +462,10 @@ public class NettyServerCnxn extends ServerCnxn {
                                   Long.toHexString(sessionId),
                                   ByteBufUtil.hexDump(Unpooled.wrappedBuffer(dat)));
                     }
+                    // byteBuffer内的数据读完了
                     if (bb.remaining() == 0) {
                         bb.flip();
+                        // 增加收到的数据包的数量记录
                         packetReceived(4 + bb.remaining());
 
                         ZooKeeperServer zks = this.zkServer;
@@ -473,6 +475,7 @@ public class NettyServerCnxn extends ServerCnxn {
                         if (initialized) {
                             // TODO: if zks.processPacket() is changed to take a ByteBuffer[],
                             // we could implement zero-copy queueing.
+                            // 关键点。处理数据包，最终将数据放入提交队列中
                             zks.processPacket(this, bb);
                         } else {
                             LOG.debug("got conn req request from {}", getRemoteSocketAddress());
