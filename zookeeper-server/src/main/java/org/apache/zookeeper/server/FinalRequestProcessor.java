@@ -118,6 +118,7 @@ public class FinalRequestProcessor implements RequestProcessor {
             ZooTrace.logRequest(LOG, traceMask, 'E', request, "");
         }
 
+        // 处理事务请求的最后步骤。返回事务处理结果。
         ProcessTxnResult rc = zks.processTxn(request);
 
         // ZOOKEEPER-558:
@@ -153,6 +154,8 @@ public class FinalRequestProcessor implements RequestProcessor {
         if (request.cnxn == null) {
             return;
         }
+        // watcher的本质
+        // ServerCnxn实现了Watcher借口
         ServerCnxn cnxn = request.cnxn;
 
         long lastZxid = zks.getZKDatabase().getDataTreeLastProcessedZxid();
@@ -196,6 +199,7 @@ public class FinalRequestProcessor implements RequestProcessor {
                 ServerMetrics.getMetrics().STALE_REPLIES.add(1);
             }
             AuditHelper.addAuditLog(request, rc);
+            // 根据不同的请求类型标签，返回不同的响应。
             switch (request.type) {
             case OpCode.ping: {
                 lastOp = "PING";
@@ -346,6 +350,7 @@ public class FinalRequestProcessor implements RequestProcessor {
                 err = Code.get(rc.err);
                 break;
             }
+            // 判断服务节点是否存在
             case OpCode.exists: {
                 lastOp = "EXIS";
                 // TODO we need to figure out the security requirement for this!
@@ -355,7 +360,9 @@ public class FinalRequestProcessor implements RequestProcessor {
                 if (path.indexOf('\0') != -1) {
                     throw new KeeperException.BadArgumentsException();
                 }
+                // 返回节点的状态信息对象
                 Stat stat = zks.getZKDatabase().statNode(path, existsRequest.getWatch() ? cnxn : null);
+                // 将状态信息对象包装到返回对象中
                 rsp = new ExistsResponse(stat);
                 requestPathMetricsCollector.registerRequest(request.type, path);
                 break;
@@ -369,6 +376,7 @@ public class FinalRequestProcessor implements RequestProcessor {
                 requestPathMetricsCollector.registerRequest(request.type, path);
                 break;
             }
+            // 设置时钟
             case OpCode.setWatches: {
                 lastOp = "SETW";
                 SetWatches setWatches = new SetWatches();
@@ -382,8 +390,11 @@ public class FinalRequestProcessor implements RequestProcessor {
                        setWatches.getDataWatches(),
                        setWatches.getExistWatches(),
                        setWatches.getChildWatches(),
+                       // persistentWatches: the persistent watches the client wants to reset
                        Collections.emptyList(),
+                       // persistentRecursiveWatches: the persistent recursive watches the client wants to reset
                        Collections.emptyList(),
+                       // watcher本质就是一个连接对象
                        cnxn);
                 break;
             }

@@ -26,7 +26,11 @@ import org.apache.yetus.audience.InterfaceAudience;
  * server it connects to. An application using such a client handles these
  * events by registering a callback object with the client. The callback object
  * is expected to be an instance of a class that implements Watcher interface.
- *
+ * 该接口规定了事件处理类必须实现的公共接口
+ * zk客户端会从与它连接的zk服务端获得多种事件。
+ * 使用zk客户端的应用在处理事件时，使用该客户端(向服务端)注册回调对象来完成
+ * 回调对象必须是Watcher接口实现类的实例
+ * 所以本质上一个连接为了支持事件处理机制是必须实现该接口的
  */
 @InterfaceAudience.Public
 public interface Watcher {

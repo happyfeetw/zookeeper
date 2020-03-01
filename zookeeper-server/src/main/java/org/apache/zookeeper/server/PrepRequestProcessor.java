@@ -136,6 +136,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements Req
         try {
             while (true) {
                 ServerMetrics.getMetrics().PREP_PROCESSOR_QUEUE_SIZE.add(submittedRequests.size());
+                // 当前线程处理prepProcessor维护的阻塞队列
                 Request request = submittedRequests.take();
                 ServerMetrics.getMetrics().PREP_PROCESSOR_QUEUE_TIME
                     .add(Time.currentElapsedTime() - request.prepQueueStartTime);
@@ -151,6 +152,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements Req
                 }
 
                 request.prepStartTime = Time.currentElapsedTime();
+                // 处理请求
                 pRequest(request);
             }
         } catch (Exception e) {
@@ -766,6 +768,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements Req
         request.setTxn(null);
 
         try {
+            // 根据请求类型处理
             switch (request.type) {
             case OpCode.createContainer:
             case OpCode.create:
@@ -941,6 +944,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements Req
         }
         request.zxid = zks.getZxid();
         ServerMetrics.getMetrics().PREP_PROCESS_TIME.add(Time.currentElapsedTime() - request.prepStartTime);
+        // 处理链中的当前处理器处理完成后，提交给下一个处理器(syncProcessor)
         nextProcessor.processRequest(request);
     }
 
