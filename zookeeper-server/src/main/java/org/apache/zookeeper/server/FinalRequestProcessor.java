@@ -427,6 +427,7 @@ public class FinalRequestProcessor implements RequestProcessor {
                 ByteBufferInputStream.byteBuffer2Record(request.request,
                         addWatcherRequest);
                 // 为指定节点(路径)添加关注
+                // 这一步是添加事件机制添加watcher的最终步骤
                 zks.getZKDatabase().addWatch(addWatcherRequest.getPath(), cnxn, addWatcherRequest.getMode());
                 rsp = new ErrorResponse(0);
                 break;
@@ -600,10 +601,13 @@ public class FinalRequestProcessor implements RequestProcessor {
             err = Code.MARSHALLINGERROR;
         }
 
+        // 组装响应头
         ReplyHeader hdr = new ReplyHeader(request.cxid, lastZxid, err.intValue());
 
+        // 将节点自身状态更新
         updateStats(request, lastOp, lastZxid);
 
+        // 向客户端发送响应信息
         try {
             if (path == null || rsp == null) {
                 cnxn.sendResponse(hdr, rsp, "response");
@@ -627,6 +631,7 @@ public class FinalRequestProcessor implements RequestProcessor {
                         break;
                     }
                     default:
+                        // 发送响应
                         cnxn.sendResponse(hdr, rsp, "response");
                 }
             }

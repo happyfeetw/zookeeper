@@ -143,12 +143,14 @@ public class NIOServerCnxn extends ServerCnxn {
             LOG.trace("Add a buffer to outgoingBuffers, sk {} is valid: {}", sk, sk.isValid());
         }
 
+        // NIO方式使用阻塞队列outgoing存放要发送到客户端的数据buffer
         synchronized (outgoingBuffers) {
             for (ByteBuffer buffer : buffers) {
                 outgoingBuffers.add(buffer);
             }
             outgoingBuffers.add(packetSentinel);
         }
+        // 使用专门的线程唤醒selector发送数据
         requestInterestOpsUpdate();
     }
 

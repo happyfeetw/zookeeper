@@ -96,6 +96,8 @@ public class WatchManager implements IWatchManager {
         if (paths == null) {
             // cnxns typically have many watches, so use default cap here
             paths = new HashSet<>();
+            // 为什么将watcher作为key，节点(路径)作为value？
+            //
             watch2Paths.put(watcher, paths);
         }
 

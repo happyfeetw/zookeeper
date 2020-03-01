@@ -183,6 +183,8 @@ public class NettyServerCnxn extends ServerCnxn {
         if (closingChannel || !channel.isOpen()) {
             return;
         }
+        // 此处cacheKey和stat参数并不起作用
+        // 在NIOServerCnxn的方法实现中会用到它们
         sendBuffer(serialize(h, r, tag, cacheKey, stat, opCode));
         decrOutstandingAndCheckThrottle(h);
     }
@@ -200,12 +202,17 @@ public class NettyServerCnxn extends ServerCnxn {
         }
     };
 
+    /**
+     * netty方式与nio的方式实现不一样
+     * @param buffers
+     */
     @Override
     public void sendBuffer(ByteBuffer... buffers) {
         if (buffers.length == 1 && buffers[0] == ServerCnxnFactory.closeConn) {
             close(DisconnectReason.CLIENT_CLOSED_CONNECTION);
             return;
         }
+
         channel.writeAndFlush(Unpooled.wrappedBuffer(buffers)).addListener(onSendBufferDoneListener);
     }
 
