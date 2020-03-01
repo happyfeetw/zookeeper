@@ -67,6 +67,14 @@ public class WatchManager implements IWatchManager {
         return addWatch(path, watcher, WatcherMode.DEFAULT_WATCHER_MODE);
     }
 
+    /**
+     * 添加关注
+     * @param path znode path
+     * @param watcher watcher object reference
+     * @param watcherMode the watcher mode to use
+     *
+     * @return
+     */
     @Override
     public synchronized boolean addWatch(String path, Watcher watcher, WatcherMode watcherMode) {
         if (isDeadWatcher(watcher)) {

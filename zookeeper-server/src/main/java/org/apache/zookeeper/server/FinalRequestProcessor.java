@@ -155,14 +155,18 @@ public class FinalRequestProcessor implements RequestProcessor {
             return;
         }
         // watcher的本质
-        // ServerCnxn实现了Watcher借口
+        // ServerCnxn实现了Watcher接口
+        // 具体要看Watcher的接口文档
         ServerCnxn cnxn = request.cnxn;
 
+        // 加载磁盘上的最新事务id
         long lastZxid = zks.getZKDatabase().getDataTreeLastProcessedZxid();
 
         String lastOp = "NA";
         // Notify ZooKeeperServer that the request has finished so that it can
         // update any request accounting/throttling limits
+        // 该processor开始执行后，会将"inprocess"的请求数量-1并且
+        // 如果存在限流器，也会唤醒限流器线程
         zks.decInProcess();
         zks.requestFinished(request);
         Code err = Code.OK;
@@ -286,8 +290,10 @@ public class FinalRequestProcessor implements RequestProcessor {
                 }
                 break;
             }
+            // 创建节点的请求
             case OpCode.create: {
                 lastOp = "CREA";
+                // 返回节点路径
                 rsp = new CreateResponse(rc.path);
                 err = Code.get(rc.err);
                 requestPathMetricsCollector.registerRequest(request.type, rc.path);
@@ -376,7 +382,7 @@ public class FinalRequestProcessor implements RequestProcessor {
                 requestPathMetricsCollector.registerRequest(request.type, path);
                 break;
             }
-            // 设置时钟
+            // 设置关注
             case OpCode.setWatches: {
                 lastOp = "SETW";
                 SetWatches setWatches = new SetWatches();
@@ -414,11 +420,13 @@ public class FinalRequestProcessor implements RequestProcessor {
                         cnxn);
                 break;
             }
+            // 添加关注
             case OpCode.addWatch: {
                 lastOp = "ADDW";
                 AddWatchRequest addWatcherRequest = new AddWatchRequest();
                 ByteBufferInputStream.byteBuffer2Record(request.request,
                         addWatcherRequest);
+                // 为指定节点(路径)添加关注
                 zks.getZKDatabase().addWatch(addWatcherRequest.getPath(), cnxn, addWatcherRequest.getMode());
                 rsp = new ErrorResponse(0);
                 break;
