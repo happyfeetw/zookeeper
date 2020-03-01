@@ -656,6 +656,9 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         }
     }
 
+    /**
+     * 服务端实例初始化完成后会构建处理器链
+     */
     public synchronized void startup() {
         if (sessionTracker == null) {
             createSessionTracker();
@@ -1120,10 +1123,13 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
             boolean validpacket = Request.isValid(si.type); // 判断请求是否可用
             if (validpacket) {  // 请求可用
                 setLocalSessionFlag(si);
-                // firstProcessor : RequestProcessor
-                // 与3.4.8版本不同。3.4.8版本中启动请求的处理过程
-                // 存在三个processor，分别是prep、sync和final三个requestProcessor
-                // 当前版本中，其余两个processor在启动后的通信过程中存在（待验证）
+                // firstProcessor : prepRequestProcessor
+                // 处理器链的作用顺序是 prep->sync->final
+                // 在每一个processor类里面都会维护一个阻塞队列和一个run方法(类通过继承重写run())
+                // 阻塞队列用于保存上一个processor提交过来的请求
+                // run方法用来处理这个阻塞队列并对取出的请求做进一步处理
+                // 这个思想(类似与linux中的管道(pipe)思想)可以借鉴(重要)
+                // todo 但是这个顺序是如何保证的？通过构造方法吗？
                 firstProcessor.processRequest(si);
                 if (si.cnxn != null) {
                     // 对在处理链中的请求的处理次数作原子递增
@@ -1624,7 +1630,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
                 cnxn.sendResponse(replyHeader, null, "response");
                 cnxn.sendCloseSession();
                 cnxn.disableRecv();
-            } else {    // 最一般的情况下会走这里
+            } else {    // 最一般的情况下，客户端初始化的时候会走这里
                 //  构造一个请求对象
                 Request si = new Request(cnxn, cnxn.getSessionId(), h.getXid(), h.getType(), incomingBuffer, cnxn.getAuthInfo());
                 // 取得incommingBuffer(客户端发过来的buffer)的最大长度
